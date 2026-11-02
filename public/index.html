@@ -43,7 +43,17 @@
       <button class="btn" type="submit">Go</button>
     </form>
     <div class="list results" id="results" hidden></div>
-    <div class="savedrow" id="savedWrap" hidden><span class="lbl">Saved</span><div class="saved" id="saved"></div></div>
+    <div class="toolrow">
+      <div class="savedrow" id="savedWrap" hidden><span class="lbl">Saved</span><div class="saved" id="saved"></div></div>
+      <button class="addphone" id="installBtn" type="button" hidden aria-label="Get the free Bite Score app on your phone">
+        <svg class="appicon" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0a1630"/><path d="M5 19h22l-2 6H3z" fill="#ffb81c"/><text x="16" y="15" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="10" fill="#f5f2e9">BITE</text><circle cx="26" cy="6" r="2.5" fill="#e2343c"/></svg>
+        <span class="addtxt">Get the app<small>Free · 1 tap</small></span>
+      </button>
+    </div>
+    <div class="tip" id="installTip" hidden>
+      <div class="tiphead"><b>Get Bite Score on your home screen</b><button class="tipx" id="installClose" type="button" aria-label="Close">✕</button></div>
+      <div id="installSteps"></div>
+    </div>
   </section>
 
   <section class="bug loading" id="bug" aria-live="polite">
@@ -94,12 +104,22 @@
   <section class="actions">
     <button class="btn big" id="shareBtn" type="button">🎣 Send to my fishing crew</button>
     <div class="sharebox" id="shareBox" hidden>
-      <label class="lbl" for="shareText">Copy this into your group text</label>
+      <div class="lbl">Send it to your crew</div>
+      <div class="sharegrid">
+        <a class="shbtn" id="shSms" href="#">💬 Text</a>
+        <a class="shbtn" id="shWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="shbtn" id="shFb" href="#" target="_blank" rel="noopener">Facebook</a>
+        <a class="shbtn" id="shX" href="#" target="_blank" rel="noopener">X</a>
+        <a class="shbtn" id="shMail" href="#">✉️ Email</a>
+        <button class="shbtn" id="shImg" type="button">🖼 Save image</button>
+      </div>
+      <label class="lbl" for="shareText">Or copy the message</label>
       <textarea id="shareText" readonly></textarea>
-      <button class="btn ghost" id="copyBtn" type="button">Copy text</button>
+      <div class="sharecopy">
+        <button class="btn ghost" id="copyBtn" type="button">Copy message</button>
+        <button class="btn ghost" id="copyLink" type="button">Copy link</button>
+      </div>
     </div>
-    <button class="btn ghost big" id="installBtn" type="button" hidden>⬇ Install Bite Score</button>
-    <div class="tip" id="iosTip" hidden><b>Put Bite Score on your home screen.</b> iPhone: open in Safari, tap the Share button, then <b>Add to Home Screen</b>. Android: tap the ⋮ menu, then <b>Install app</b>.</div>
   </section>
 
   <section class="panel" id="alertsPanel">

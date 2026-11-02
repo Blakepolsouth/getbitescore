@@ -1,5 +1,5 @@
 // Bite Score service worker: offline app shell, cached forecasts, and bite alerts.
-const SHELL = "bitescore-shell-v5";
+const SHELL = "bitescore-shell-v6";
 const DATA = "bitescore-data-v1";
 const FILES = ["/", "/app.css", "/app.js", "/engine.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 

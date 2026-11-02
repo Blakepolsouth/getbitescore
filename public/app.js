@@ -40,6 +40,8 @@ function render() {
   $("starBtn").setAttribute("aria-pressed", isSaved() ? "true" : "false");
   $("live").classList.toggle("sample", DEMO); $("liveTxt").textContent = DEMO ? "SAMPLE" : "LIVE";
   $("tideLegend").hidden = !MODEL.hasTides;
+  if (!$("shareBox").hidden) fillShareSheet();
+  prepareCard();
 }
 function primeWhy(w, D) {
   if (!w.start) return "";
@@ -308,19 +310,63 @@ function cardBlob() {
     } catch (e) { res(null); }
   });
 }
-$("shareBtn").onclick = async () => {
-  if (!MODEL) return; const text = shareText();
-  try {
-    if (navigator.share) {
-      const b = await cardBlob(), file = b ? new File([b], "bite-score.png", { type: "image/png" }) : null;
-      if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ text, files: [file] }); return; }
-      await navigator.share({ text }); return;
-    }
-  } catch (e) { if (e && e.name === "AbortError") return; }
-  $("shareBox").hidden = false; $("shareText").value = text; $("shareText").select();
+/* The score image is made ahead of time, so tapping Share opens the share menu instantly.
+   (Phones only allow the share menu right after a tap; building the image first made it hang or fail.) */
+let CARD = { key: "", file: null }, cardTimer = null, SHARING = false;
+const cardKey = () => MODEL && PLACE ? `${PLACE.lat},${PLACE.lon}|${MODEL.days[SEL].key}|${MODEL.days[SEL].score}|${DEMO}` : "";
+function prepareCard() {
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(async () => {
+    const k = cardKey(); if (!k || CARD.key === k) return;
+    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+    const b = await cardBlob();
+    if (b && cardKey() === k) CARD = { key: k, file: new File([b], "bite-score.png", { type: "image/png" }) };
+  }, 500);
+}
+const mobileShare = () => !!navigator.share && matchMedia("(pointer: coarse)").matches;
+function fillShareSheet() {
+  const text = shareText(), url = shareURL(), msg = text.replace("\n" + url, ""), D = MODEL.days[SEL];
+  const subject = `Bite Score ${D.score}/10 at ${PLACE.name}`;
+  $("shareText").value = text;
+  $("shSms").href = `sms:?&body=${encodeURIComponent(text)}`;
+  $("shWa").href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  $("shFb").href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  $("shX").href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(msg)}&url=${encodeURIComponent(url)}`;
+  $("shMail").href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+}
+function openShareSheet() {
+  fillShareSheet(); const box = $("shareBox"); box.hidden = false;
+  box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+}
+$("shareBtn").onclick = () => {
+  if (!MODEL || SHARING) return;
+  if (!mobileShare()) { openShareSheet(); return; }          // computers: our own share sheet (no slow system dialog)
+  const text = shareText(), file = CARD.key === cardKey() ? CARD.file : null;
+  let data = { text };
+  try { if (file && navigator.canShare && navigator.canShare({ files: [file] })) data = { text, files: [file] }; } catch (e) {}
+  SHARING = true; const btn = $("shareBtn"); btn.setAttribute("aria-busy", "true");
+  const done = () => { SHARING = false; btn.removeAttribute("aria-busy"); };
+  const guard = setTimeout(done, 15000);                    // never leave the button stuck
+  navigator.share(data)                                     // called right away, inside the tap
+    .catch(e => {
+      if (e && e.name === "AbortError") return;             // they closed the menu
+      if (data.files) return navigator.share({ text }).catch(err => { if (!err || err.name !== "AbortError") openShareSheet(); });
+      openShareSheet();
+    })
+    .finally(() => { clearTimeout(guard); done(); });
+};
+$("shImg").onclick = async () => {
+  if (!MODEL) return;
+  const file = CARD.key === cardKey() && CARD.file ? CARD.file : await cardBlob().then(b => b && new File([b], "bite-score.png", { type: "image/png" }));
+  if (!file) { toast("Couldn't make the image. Try again."); return; }
+  if (mobileShare() && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = `bite-score-${PLACE.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 };
 async function copyFrom(el, msg) { try { await navigator.clipboard.writeText(el.value); toast(msg); } catch (e) { el.focus(); el.select(); toast("Selected — press copy"); } }
+async function copyText(t, msg) { try { await navigator.clipboard.writeText(t); toast(msg); } catch (e) { $("shareText").value = t; $("shareText").focus(); $("shareText").select(); toast("Selected — press copy"); } }
 $("copyBtn").onclick = () => copyFrom($("shareText"), "Copied — paste it in your group text");
+$("copyLink").onclick = () => copyText(shareURL(), "Link copied");
 function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2400); }
 
 /* ───────── Embed widget code ───────── */
@@ -390,11 +436,25 @@ async function alertOff(a) {
   store.set("alerts", alertsLocal().filter(x => x.key !== a.key)); toast(`Alerts off for ${a.name}`); renderAlerts();
 }
 
-/* ───────── Install ───────── */
+/* ───────── Install ("Add to phone") ───────── */
 let deferred = null;
-window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; $("installBtn").hidden = false; $("iosTip").hidden = true; });
-$("installBtn").onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice.catch(() => {}); deferred = null; $("installBtn").hidden = true; };
-if (!standalone) setTimeout(() => { if (!deferred) $("iosTip").hidden = false; }, 1500);
+const isAndroid = /Android/.test(navigator.userAgent), isMobile = isIOS || isAndroid;
+function installSteps() {
+  if (isIOS) {
+    const notSafari = /CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+    return `<ol><li>Tap the <b>Share</b> button ${notSafari ? "(top or bottom of the browser)" : "at the bottom of Safari"}: the square with the arrow pointing up.</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. Bite Score now opens like an app.</li></ol>`;
+  }
+  if (isAndroid) return `<ol><li>Tap the <b>⋮</b> menu at the top right of Chrome.</li><li>Tap <b>Add to Home screen</b> or <b>Install app</b>.</li><li>Tap <b>Install</b>.</li></ol>`;
+  return `<ol><li>On your phone, open <b>getbitescore.com</b>.</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap ⋮, then <b>Install app</b>.</li><li>On this computer, Chrome and Edge also show an install icon at the right end of the address bar.</li></ol>`;
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; if (!standalone) $("installBtn").hidden = false; });
+window.addEventListener("appinstalled", () => { $("installBtn").hidden = true; $("installTip").hidden = true; toast("Bite Score added to your phone"); });
+if (!standalone) $("installBtn").hidden = false;
+$("installBtn").onclick = async () => {
+  if (deferred) { const d = deferred; deferred = null; d.prompt(); const r = await d.userChoice.catch(() => null); if (r && r.outcome === "accepted") $("installBtn").hidden = true; return; }
+  const tip = $("installTip"); $("installSteps").innerHTML = installSteps(); tip.hidden = !tip.hidden;
+};
+$("installClose").onclick = () => { $("installTip").hidden = true; };
 if ("serviceWorker" in navigator && !PREVIEW) navigator.serviceWorker.register(new URL("sw.js", import.meta.url), { scope: "/" }).catch(() => {});
 
 /* ───────── Start ───────── */
