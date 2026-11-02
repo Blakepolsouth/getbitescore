@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bite Score</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Should you go fishing today? One score, the best time to fish, and the 7-day outlook for any lake, river or coast.">
+<meta name="theme-color" content="#0a1630">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bite Score">
+<link rel="canonical" href="https://getbitescore.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://getbitescore.com/">
+<meta property="og:title" content="Bite Score: should you go fishing today?">
+<meta property="og:description" content="One score from 1 to 10, the best time to fish, and the 7-day outlook for any lake, river or coast. Free.">
+<meta property="og:image" content="https://getbitescore.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <header class="top">
+    <div class="brand">
+      <b>Bite<span>Score</span></b>
+      <span class="live" id="live"><i></i><span id="liveTxt">LIVE</span></span>
+    </div>
+    <button class="locbtn" id="locBtn" type="button" title="Use my current location">📍 <span id="locName">Near me</span></button>
+  </header>
+
+  <section class="finder" id="finder">
+    <form class="searchrow" id="searchForm" autocomplete="off" role="search">
+      <input id="q" type="search" placeholder="Search a lake, river, bay or town" aria-label="Search for a lake, river, bay or town" enterkeyhint="search">
+      <button class="btn" type="submit">Go</button>
+    </form>
+    <div class="list results" id="results" hidden></div>
+    <div class="savedrow" id="savedWrap" hidden><span class="lbl">Saved</span><div class="saved" id="saved"></div></div>
+  </section>
+
+  <section class="bug loading" id="bug" aria-live="polite">
+    <div class="bug-head">
+      <div class="place" id="bugPlace">Loading forecast</div>
+      <button class="star" id="starBtn" aria-pressed="false" aria-label="Save this spot" title="Save this spot">★</button>
+    </div>
+    <div class="bug-body">
+      <div class="score" id="score">–<sup>/10</sup></div>
+      <div class="side">
+        <div class="dayname" id="dayName">Today</div>
+        <div class="verdict" id="verdict"><span>Warming up</span></div>
+        <div class="prime">
+          <span class="lbl">Prime time</span>
+          <b id="prime">–</b>
+          <small id="primeNote"></small>
+        </div>
+      </div>
+    </div>
+    <div class="alert" id="alert" hidden></div>
+    <p class="why" id="why">Checking pressure, wind, sky and the moon for your water.</p>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>This week's schedule</h2><span class="lbl" id="bestDay">Tap a day</span></div>
+    <div class="week" id="week"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Bite clock</h2><span class="lbl" id="clockLbl">Hour by hour</span></div>
+    <div class="clock">
+      <svg id="chart" viewBox="0 0 380 132" role="img" aria-label="Hourly bite score"></svg>
+    </div>
+    <div class="times" id="times"></div>
+    <div class="legend">
+      <div><b>Prime</b> The best 2 hours of the day overall. This is when to be on the water.</div>
+      <div><b>Major</b> Moon directly overhead or underfoot. The stronger solunar feeding period, about 2 hours.</div>
+      <div><b>Minor</b> Moonrise or moonset. A shorter feeding period, about 1 hour.</div>
+      <div id="tideLegend" hidden><b>Tide</b> High and low tide from the nearest NOAA station. Moving water fishes best; slack tide is slowest.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Stat sheet</h2><span class="lbl">Grade</span></div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="actions">
+    <button class="btn big" id="shareBtn" type="button">🎣 Send to my fishing crew</button>
+    <div class="sharebox" id="shareBox" hidden>
+      <label class="lbl" for="shareText">Copy this into your group text</label>
+      <textarea id="shareText" readonly></textarea>
+      <button class="btn ghost" id="copyBtn" type="button">Copy text</button>
+    </div>
+    <button class="btn ghost big" id="installBtn" type="button" hidden>⬇ Install Bite Score</button>
+    <div class="tip" id="iosTip" hidden><b>Put Bite Score on your home screen.</b> iPhone: open in Safari, tap the Share button, then <b>Add to Home Screen</b>. Android: tap the ⋮ menu, then <b>Install app</b>.</div>
+  </section>
+
+  <section class="panel" id="alertsPanel">
+    <div class="sec-h" style="border:0;padding:0"><h2>Bite alerts</h2><span class="lbl">Free</span></div>
+    <p>Get a phone alert when <b id="alertSpot">this spot</b> is forecast to hit your number in the next few days.</p>
+    <div class="alertrow">
+      <label class="lbl" for="alertThr">Alert at</label>
+      <select id="alertThr"><option value="7">7 or better</option><option value="8" selected>8 or better</option><option value="9">9 or better</option></select>
+      <button class="btn" id="alertBtn" type="button">🔔 Turn on alerts</button>
+    </div>
+    <p id="alertNote" hidden></p>
+    <div class="alertlist" id="alertList"></div>
+  </section>
+
+  <section class="panel">
+    <details class="more" id="embedBox">
+      <summary>Put Bite Score on your website</summary>
+      <div>
+        <p>Bait shops, marinas, guides and clubs: paste this code into your website to show the live Bite Score for <b id="embedSpot">this spot</b>. It updates itself every hour.</p>
+        <textarea class="codebox" id="embedCode" readonly aria-label="Embed code"></textarea>
+        <button class="btn ghost" id="embedCopy" type="button">Copy code</button>
+        <a href="/embed.html" id="embedPreview" target="_blank" rel="noopener" style="color:var(--gold)">Preview the widget ↗</a>
+      </div>
+    </details>
+  </section>
+
+  <section class="seo" id="seo"><!--SEO--></section>
+
+  <footer>
+    <div>Bite Score is a conditions guide, not a guarantee. It weighs barometric pressure trend, wind, cloud cover, rain, tide (on the coast), sunrise and sunset, solunar periods and moon phase. Scores update as the forecast changes. Stay off the water when you hear thunder.</div>
+    <div><a href="/lakes/">Fishing forecasts by lake</a> · getbitescore.com · Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>. Tide predictions by <a href="https://tidesandcurrents.noaa.gov/" target="_blank" rel="noopener">NOAA</a>. Moon and sun times calculated on your device.</div>
+  </footer>
+</div>
+
+<div class="chyron" aria-hidden="true">
+  <div class="tag">Bite Line</div>
+  <div class="run"><div class="track" id="track"><span>Loading conditions</span></div></div>
+</div>
+
+<script>window.BITE_SPOT=null;/*SPOT*/</script>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

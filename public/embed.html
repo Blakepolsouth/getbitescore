@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bite Score Widget</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500&display=swap">
+<style>
+/* Layout: one compact score bug — brand bar, spot, big score + verdict, prime time, 7-day strip, link out. */
+:root{--field:#0a1630;--panel:#11234a;--panel-2:#183166;--line:#2a4785;--chalk:#f5f2e9;--muted:#9fb0cf;--gold:#ffb81c;--red:#e2343c;--good:#33d17a;--fair:#ffb81c;--tough:#ff7a1a;--bad:#e2343c;--ink:#0a1630;
+  --f-board:"Big Shoulders Display","Impact","Arial Narrow Bold",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:transparent}
+.card{height:100%;min-height:340px;display:flex;flex-direction:column;background:linear-gradient(160deg,var(--panel-2),var(--panel) 60%);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:var(--chalk);font-family:var(--f-body)}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--field);border-bottom:2px solid var(--gold)}
+.brand{font-family:var(--f-board);font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.brand span{color:var(--gold)}
+.live{font-family:var(--f-label);font-weight:800;font-size:11px;letter-spacing:.12em;background:var(--red);color:#fff;padding:2px 6px;border-radius:2px}
+.body{flex:1;display:flex;flex-direction:column;gap:8px;padding:10px 14px}
+.place{font-family:var(--f-label);font-weight:800;font-size:16px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.main{display:flex;align-items:center;gap:14px}
+.score{font-family:var(--f-board);font-weight:900;font-size:96px;line-height:.8;color:var(--tier,var(--gold));font-variant-numeric:tabular-nums}
+.score sup{font-size:.24em;color:var(--muted);vertical-align:top;margin-left:2px}
+.side{display:flex;flex-direction:column;gap:6px;min-width:0}
+.verdict{align-self:flex-start;font-family:var(--f-board);font-weight:900;font-size:22px;line-height:1;text-transform:uppercase;background:var(--tier,var(--gold));color:var(--ink);padding:5px 8px 3px;transform:skew(-8deg);border-radius:2px}
+.verdict span{display:inline-block;transform:skew(8deg)}
+.lbl{font-family:var(--f-label);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.prime{font-family:var(--f-board);font-weight:800;font-size:20px;line-height:1;font-variant-numeric:tabular-nums}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:auto}
+.d{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--field);border:1px solid var(--line);border-radius:4px;padding:5px 0}
+.d b{font-family:var(--f-label);font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.d i{font-style:normal;font-family:var(--f-board);font-weight:900;font-size:20px;line-height:1;color:var(--tier)}
+.foot{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;background:var(--chalk);color:var(--ink);font-family:var(--f-label);font-weight:800;font-size:13px;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;padding:8px}
+.foot:hover,.foot:focus-visible{background:var(--gold);outline:none}
+.msg{color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="bar"><div class="brand">Bite<span>Score</span></div><span class="live" id="live">LIVE</span></div>
+  <div class="body">
+    <div class="place" id="place">Loading…</div>
+    <div class="main">
+      <div class="score" id="score">–<sup>/10</sup></div>
+      <div class="side">
+        <div class="lbl" id="day">Today</div>
+        <div class="verdict" id="verdict"><span>Loading</span></div>
+        <div><div class="lbl">Prime time</div><div class="prime" id="prime">–</div></div>
+      </div>
+    </div>
+    <div class="week" id="week"></div>
+  </div>
+  <a class="foot" id="foot" href="https://getbitescore.com/" target="_blank" rel="noopener">Full forecast at getbitescore.com ↗</a>
+</div>
+<script type="module">
+import { buildModel, primeFor, tierOf, fetchForecast, fetchStationList, nearestStation, fetchTides, inTideRegion, spotURL, fmtRange, DN, keyDate } from "./engine.js";
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const at = (q.get("at") || "").split(",").map(Number);
+const place = { name: (q.get("n") || "Lake Okeechobee").slice(0, 60), label: (q.get("l") || q.get("n") || "Lake Okeechobee, FL").slice(0, 80),
+  lat: at.length === 2 && !at.some(isNaN) ? at[0] : 26.95, lon: at.length === 2 && !at.some(isNaN) ? at[1] : -80.8 };
+$("place").textContent = place.label;
+async function tides() {
+  if (!inTideRegion(place)) return null;
+  try {
+    let list = null; try { const c = JSON.parse(localStorage.getItem("bs_stations") || "null"); if (c && c.at > Date.now() - 30 * 864e5) list = c.list; } catch (e) {}
+    if (!list) { list = await fetchStationList(); try { localStorage.setItem("bs_stations", JSON.stringify({ at: Date.now(), list })); } catch (e) {} }
+    const st = nearestStation(list, place.lat, place.lon, 30); return st ? await fetchTides(st.id) : null;
+  } catch (e) { return null; }
+}
+async function run() {
+  try {
+    const [data, td] = await Promise.all([fetchForecast(place), tides()]);
+    const M = buildModel(data.hourly, data.timezone || "UTC", place, td), D = M.days[0], t = tierOf(D.score), { w } = primeFor(D);
+    $("card").style.setProperty("--tier", t.c);
+    $("score").innerHTML = `${D.score}<sup>/10</sup>`; $("verdict").innerHTML = `<span>${t.name}</span>`;
+    $("prime").textContent = w.start ? fmtRange(w.start, w.end, M.tz) : "Passed";
+    $("week").innerHTML = M.days.map(d => `<div class="d" style="--tier:${tierOf(d.score).c}"><b>${d.isToday ? "Tdy" : DN[keyDate(d.key).getUTCDay()]}</b><i>${d.score}</i></div>`).join("");
+    $("foot").href = spotURL(place, null, M.tz);
+  } catch (e) {
+    $("verdict").innerHTML = "<span>No signal</span>"; $("live").textContent = "OFFLINE";
+    $("week").innerHTML = '<div class="msg" style="grid-column:1/-1">Forecast unavailable right now.</div>';
+    $("foot").href = spotURL(place, null, "UTC");
+  }
+}
+run(); setInterval(run, 60 * 60 * 1000);
+</script>
+</body>
+</html>
