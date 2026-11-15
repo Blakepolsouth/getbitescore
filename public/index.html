@@ -124,10 +124,12 @@
 
   <section class="panel" id="alertsPanel">
     <div class="sec-h" style="border:0;padding:0"><h2>Bite alerts</h2><span class="lbl">Free</span></div>
-    <p>Get a phone alert when <b id="alertSpot">this spot</b> is forecast to hit your number in the next few days.</p>
+    <p>Get a phone alert when <b id="alertSpot">this spot</b> is forecast to hit your number, up to 6 days ahead so you can plan a trip. We check again the day before.</p>
     <div class="alertrow">
       <label class="lbl" for="alertThr">Alert at</label>
-      <select id="alertThr"><option value="7">7 or better</option><option value="8" selected>8 or better</option><option value="9">9 or better</option></select>
+      <select id="alertThr"><option value="6">6 or better</option><option value="7">7 or better</option><option value="8" selected>8 or better</option><option value="9">9 or better</option><option value="10">10 only</option></select>
+      <label class="lbl" for="alertLead">Notice</label>
+      <select id="alertLead"><option value="6" selected>Up to 6 days ahead</option><option value="4">Up to 4 days ahead</option><option value="2">Up to 2 days ahead</option><option value="1">Day before only</option></select>
       <button class="btn" id="alertBtn" type="button">🔔 Turn on alerts</button>
     </div>
     <p id="alertNote" hidden></p>

@@ -153,9 +153,9 @@ footer a{color:var(--muted)}
 .chip.tide em{color:#7fd3ff}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .panel p{margin:0;font-size:14px;color:var(--muted)}
-.alertrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.alertrow{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 10px}
 .alertrow select{background:var(--field);color:var(--chalk);border:1px solid var(--line);border-radius:4px;padding:10px;font:inherit;font-size:15px}
-.alertrow .btn{flex:1;min-width:160px}
+.alertrow .btn{grid-column:1/-1}
 .alertlist{display:flex;flex-direction:column;gap:6px}
 .alertlist div{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--field);border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-family:var(--f-label);font-weight:700;letter-spacing:.03em}
 .alertlist button{background:none;border:1px solid var(--line);border-radius:3px;padding:4px 8px;font-family:var(--f-label);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}

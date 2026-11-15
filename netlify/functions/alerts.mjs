@@ -6,6 +6,7 @@
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
 import { vapidKeys, alertId } from "../lib/shared.mjs";
+import { LEADS, THRESHOLDS } from "../lib/plan.mjs";
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
@@ -29,12 +30,13 @@ export default async (req) => {
   if (action === "unsubscribe") { await store.delete(id); return json({ ok: true }); }
   if (action !== "subscribe") return json({ error: "Unknown action" }, 400);
 
-  const threshold = [7, 8, 9].includes(+body.threshold) ? +body.threshold : 8;
+  const threshold = THRESHOLDS.includes(+body.threshold) ? +body.threshold : 8;
+  const lead = LEADS.includes(+body.lead) ? +body.lead : 3;
   const name = clean(spot.name, 60) || "Your spot";
   const record = {
     subscription: { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
     spot: { name, label: clean(spot.label, 80) || name, lat: +(+spot.lat).toFixed(4), lon: +(+spot.lon).toFixed(4) },
-    threshold, created: Date.now(), notified: {}
+    threshold, lead, created: Date.now(), notified: {}
   };
   const existing = await store.get(id, { type: "json" });
   if (existing && existing.notified) record.notified = existing.notified;
@@ -45,13 +47,13 @@ export default async (req) => {
   try {
     await webpush.sendNotification(record.subscription, JSON.stringify({
       title: `Bite alerts on for ${name}`,
-      body: `We'll let you know when ${name} is forecast to hit ${threshold}/10 or better.`,
+      body: lead > 1 ? `We'll give you up to ${lead} days' notice when ${name} is forecast to hit ${threshold}/10 or better, then check again the day before.` : `We'll let you know the day before ${name} is forecast to hit ${threshold}/10 or better.`,
       tag: "bite-alert-" + id, url: "/"
     }), { TTL: 3600 });
   } catch (e) {
     if (e && (e.statusCode === 404 || e.statusCode === 410)) { await store.delete(id); return json({ error: "This device's notification subscription has expired. Try again." }, 410); }
   }
-  return json({ ok: true, threshold });
+  return json({ ok: true, threshold, lead });
 };
 
 export const config = { path: "/api/alerts" };

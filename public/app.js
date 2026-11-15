@@ -392,10 +392,10 @@ function renderAlerts() {
   $("alertSpot").textContent = PLACE.name;
   const list = alertsLocal(), mine = list.find(a => a.key === spotKey(PLACE));
   $("alertBtn").textContent = mine ? `✓ Alerts on at ${mine.threshold}+ · Update` : "🔔 Turn on alerts";
-  if (mine) $("alertThr").value = String(mine.threshold);
+  if (mine) { $("alertThr").value = String(mine.threshold); $("alertLead").value = String(mine.lead || 3); }
   $("alertList").innerHTML = "";
   list.forEach(a => {
-    const row = document.createElement("div"); row.innerHTML = `<span>🔔 ${esc(a.name)} · ${a.threshold}+</span>`;
+    const row = document.createElement("div"); row.innerHTML = `<span>🔔 ${esc(a.name)} · ${a.threshold}+ · ${(a.lead || 3) === 1 ? "day before" : (a.lead || 3) + " days notice"}</span>`;
     const off = document.createElement("button"); off.type = "button"; off.textContent = "Turn off"; off.onclick = () => alertOff(a); row.appendChild(off);
     $("alertList").appendChild(row);
   });
@@ -420,10 +420,10 @@ $("alertBtn").onclick = async () => {
   try {
     const perm = await Notification.requestPermission();
     if (perm !== "granted") { alertNote("Notifications are blocked for this site. Allow them in your browser or phone settings, then try again."); return; }
-    const sub = await pushSub(), threshold = +$("alertThr").value;
-    const r = await fetch("/api/alerts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "subscribe", subscription: sub.toJSON(), spot: { name: PLACE.name, label: PLACE.label, lat: PLACE.lat, lon: PLACE.lon }, threshold }) });
+    const sub = await pushSub(), threshold = +$("alertThr").value, lead = +$("alertLead").value;
+    const r = await fetch("/api/alerts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "subscribe", subscription: sub.toJSON(), spot: { name: PLACE.name, label: PLACE.label, lat: PLACE.lat, lon: PLACE.lon }, threshold, lead }) });
     if (!r.ok) throw new Error("subscribe " + r.status);
-    const list = alertsLocal().filter(a => a.key !== spotKey(PLACE)); list.unshift({ key: spotKey(PLACE), name: PLACE.name, lat: PLACE.lat, lon: PLACE.lon, threshold });
+    const list = alertsLocal().filter(a => a.key !== spotKey(PLACE)); list.unshift({ key: spotKey(PLACE), name: PLACE.name, lat: PLACE.lat, lon: PLACE.lon, threshold, lead });
     store.set("alerts", list.slice(0, 10)); toast(`Alerts on for ${PLACE.name}`);
   } catch (e) { alertNote("Couldn't turn on alerts right now. Please try again in a minute."); }
   finally { btn.disabled = false; renderAlerts(); }

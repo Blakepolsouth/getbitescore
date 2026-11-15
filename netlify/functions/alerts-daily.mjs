@@ -3,6 +3,7 @@
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
 import { vapidKeys } from "../lib/shared.mjs";
+import { planAlerts, wordAlert } from "../lib/plan.mjs";
 import {
   buildModel, primeFor, tierOf, fetchForecast, fetchStationList, nearestStation, fetchTides,
   inTideRegion, spotURL, fmtRange, DL, keyDate, SITE
@@ -47,22 +48,18 @@ export default async () => {
   let sent = 0, removed = 0;
   await mapLimit(records, 8, async ({ id, rec }) => {
     const M = models.get(rec.spot.lat.toFixed(2) + "," + rec.spot.lon.toFixed(2)); if (!M) return;
-    const todayKey = M.days[0].key;
-    const notified = Object.fromEntries(Object.entries(rec.notified || {}).filter(([k]) => k >= todayKey));
-    const hit = M.days.slice(1, 4).find(d => d.score >= rec.threshold && !notified[d.key]);
-    if (!hit) { if (Object.keys(notified).length !== Object.keys(rec.notified || {}).length) await store.setJSON(id, { ...rec, notified }); return; }
-
-    const day = DL[keyDate(hit.key).getUTCDay()], { w } = primeFor(hit);
-    const payload = {
-      title: `🎣 ${rec.spot.name}: ${hit.score}/10 ${day}`,
-      body: `${tierOf(hit.score).name}.${w.start ? ` Prime time ${fmtRange(w.start, w.end, M.tz)}.` : ""} Tap for the full forecast.`,
-      tag: "bite-" + id + "-" + hit.key,
-      url: spotURL(rec.spot, hit, M.tz).replace(SITE, "")
-    };
+    const plan = planAlerts(M.days, rec);
+    if (!plan.messages.length) { if (plan.changed) await store.setJSON(id, { ...rec, notified: plan.notified }); return; }
     try {
-      await webpush.sendNotification(rec.subscription, JSON.stringify(payload), { TTL: 12 * 3600 });
-      notified[hit.key] = hit.score; sent++;
-      await store.setJSON(id, { ...rec, notified });
+      for (const m of plan.messages) {
+        const words = wordAlert(m, {
+          icon: "🎣", place: rec.spot.name, dayName: k => DL[keyDate(k).getUTCDay()], tierName: s => tierOf(s).name,
+          extra: d => { const { w } = primeFor(d); return w.start ? ` Prime time ${fmtRange(w.start, w.end, M.tz)}.` : ""; }
+        });
+        await webpush.sendNotification(rec.subscription, JSON.stringify({ ...words, tag: `bite-${id}-${m.d.key}-${m.type}`, url: spotURL(rec.spot, m.d, M.tz).replace(SITE, "") }), { TTL: 12 * 3600 });
+        sent++;
+      }
+      await store.setJSON(id, { ...rec, notified: plan.notified });
     } catch (e) {
       if (e && (e.statusCode === 404 || e.statusCode === 410)) { await store.delete(id); removed++; }
     }
