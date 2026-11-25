@@ -181,8 +181,16 @@ async function load(p, opt) {
   loadHistory(p);
 }
 /* tackle box: water temp, clarity and what to throw */
-let HIST = null;
+let HIST = null, MEAS = null;
+async function loadMeasured(p) {
+  MEAS = null; if (PREVIEW) return;
+  const key = `meas_${(+p.lat).toFixed(2)}_${(+p.lon).toFixed(2)}`, c = store.get(key, null);
+  if (c && Date.now() - c.at < 3600e3) { MEAS = c.r.none ? null : { ...c.r, key }; return renderTackle(); }
+  try { const r = await (await fetch(`/api/watertemp?lat=${(+p.lat).toFixed(3)}&lon=${(+p.lon).toFixed(3)}`)).json(); store.set(key, { at: Date.now(), r }); MEAS = r && !r.none && isFinite(r.temp) ? { ...r, key } : null; } catch (e) {}
+  renderTackle();
+}
 async function loadHistory(p) {
+  loadMeasured(p);
   const key = `hist_${(+p.lat).toFixed(2)}_${(+p.lon).toFixed(2)}`, c = store.get(key, null);
   if (c && Date.now() - c.at < 3 * 3600e3) { HIST = { key, daily: c.daily }; return renderTackle(); }
   try { const r = await fetch(historyURL(p)); if (!r.ok) throw 0; const j = await r.json(); HIST = { key, daily: j.daily }; store.set(key, { at: Date.now(), daily: j.daily }); }
@@ -196,6 +204,10 @@ function renderTackle() {
   const list = Object.entries(SPECIES).filter(([, v]) => salt || !v.salt);
   $("spChips").innerHTML = list.map(([k, v]) => `<button type="button" role="radio" aria-checked="${k === sp}" data-sp="${k}">${v.name}</button>`).join("");
   const W = waterOn(waterModel(HIST.daily, SPECIES[sp].salt), D.key); if (!W) { box.hidden = true; return; }
+  // Live gauge nearby? Use it for today and use it to correct the estimate for other days.
+  const mkey = `meas_${(+PLACE.lat).toFixed(2)}_${(+PLACE.lon).toFixed(2)}`, M = MEAS && MEAS.key === mkey ? MEAS : null;
+  let measured = false;
+  if (M) { const est0 = waterOn(waterModel(HIST.daily, SPECIES[sp].salt), MODEL.days[0].key); if (D.isToday) { W.temp = M.temp; measured = true; } else if (est0) W.temp = Math.round(W.temp + Math.max(-8, Math.min(8, M.temp - est0.temp))); }
   const month = +D.key.slice(5, 7), se = season(sp, W.temp, W.trend, month), low = s.cloud >= 65;
   const picks = baits(sp, { wt: W.temp, phase: se.name, clar: W.clar, light: low ? "low" : "bright", wind: s.wind, pFall: s.pTrend <= -2, pRise: s.pTrend >= 2 });
   const trendTxt = W.trend > 1.5 ? "and warming" : W.trend < -1.5 ? "and cooling" : "and steady";
@@ -203,13 +215,14 @@ function renderTackle() {
     : W.clar === "stained" ? `<div class="mud stain"><b>🟫 Water may be stained</b><p>Recent rain (${W.rain7.toFixed(1)}″ this week) likely took the clarity down. Go a little brighter and louder.</p></div>` : "";
   $("tackleDay").textContent = D.isToday ? "Today" : DL[keyDate(D.key).getUTCDay()];
   $("tackleBody").innerHTML = `
-    <div class="wtemp"><div><span class="lbl">Water temp (est.)</span><b>≈${W.temp}°</b><small>${trendTxt}</small></div><div><span class="lbl">${esc(SPECIES[sp].name)} pattern</span><b class="phase">${esc(se.name)}</b></div></div>
+    <div class="wtemp"><div><span class="lbl">${measured ? "Water temp · live" : M ? "Water temp (est.)" : "Water temp (est.)"}</span><b>${measured ? "" : "≈"}${W.temp}°</b><small>${trendTxt}</small></div><div><span class="lbl">${esc(SPECIES[sp].name)} pattern</span><b class="phase">${esc(se.name)}</b></div></div>
     <p class="phasetxt">${esc(se.text)}</p>${mud}
     <ol class="baits">${picks.map((b, i) => `<li><span class="bn">${i + 1}</span><div><b>${esc(b.name)}</b><p>${esc(b.why)}</p></div><a href="${shopURL(b.q)}" target="_blank" rel="noopener sponsored">Find it ›</a></li>`).join("")}</ol>
     <p class="note">${esc(colorTip(sp, W.clar, low))}</p>
-    <p class="note fine">Water temp is estimated from recent air temps. Shallow coves run warmer, deep water and springs cooler.</p>`;
+    <p class="note fine">${M ? `${measured ? "Measured" : "Based on today's reading"} at <b>${esc(M.name)}</b>, ${M.miles} mi away (${M.source}${M.type === "stream" ? " river gauge" : ""}, ${ago(M.time)}).${M.type === "stream" ? " River water can run a few degrees off from a lake." : ""}` : "Water temp is estimated from recent air temps. Shallow coves run warmer, deep water and springs cooler."}</p>`;
   box.hidden = false;
 }
+function ago(t) { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : `${Math.round(m / 60)} hr ago`; }
 $("spChips").onclick = e => { const b = e.target.closest("[data-sp]"); if (!b) return; store.set("species", b.dataset.sp); renderTackle(); };
 function showError() {
   MODEL = null; const b = $("bug"); b.classList.remove("loading"); b.style.setProperty("--tier", "var(--muted)");

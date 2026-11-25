@@ -79,7 +79,7 @@ export function baits(sp, ctx) {
   if (sp === "bass") {
     if (muddy) { add("Spinnerbait, Colorado blade", "Thumps hard so bass can feel it in dirty water.", "colorado blade spinnerbait"); add("Black & blue jig", "A dark silhouette shows best in muddy water.", "black blue bass jig"); }
     if (ph === "Winter") { add("Suspending jerkbait", "Long pauses trigger cold, lazy bass."); add("Blade bait", "Vertical and slow over deep schools."); add("Football jig", "Drag it slowly on the bottom."); }
-    if (ph === "Pre-spawn" || ph === "Late fall") { add("Lipless crankbait", "Rip it through grass and over flats as fish move up."); add("Jerkbait", "Deadly on staging bass in cool water."); add("Chatterbait", "Covers water fast."); }
+    if (ph === "Pre-spawn" || ph === "Late fall") { add("Lipless crankbait", ph === "Late fall" ? "Covers water fast to find bass schooled on bait." : "Rip it through grass and over flats as fish move up."); add("Jerkbait", "Deadly on staging bass in cool water."); add("Chatterbait", "Covers water fast."); }
     if (ph === "Spawn") { add("Senko (wacky rig)", "Falls slow and natural near beds."); add("Soft plastic lizard", "Bass hate lizards near their beds."); add("Swim jig", "Fish it around shallow cover."); }
     if (ph === "Post-spawn") { add("Walking topwater", "Early and late, post-spawn bass smash topwater."); add("Swimbait", "Bass are feeding up on bream and shad."); add("Shaky head worm", "Slow and easy for recovering fish."); }
     if (ph === "Fall" || ph === "Early fall") { add("Walking topwater", "Bass blow up on shad near the surface in fall."); add("Squarebill crankbait", "Bang it off shallow cover in the creeks."); add("Spinnerbait", "Looks like a fleeing shad."); }
