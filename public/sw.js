@@ -1,7 +1,7 @@
 // Bite Score service worker: offline app shell, cached forecasts, and bite alerts.
-const SHELL = "bitescore-shell-v8";
+const SHELL = "bitescore-shell-v9";
 const DATA = "bitescore-data-v1";
-const FILES = ["/", "/app.css", "/app.js", "/engine.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+const FILES = ["/", "/app.css", "/app.js", "/engine.js", "/tackle.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

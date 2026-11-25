@@ -207,3 +207,26 @@ details.more > div{margin-top:10px;display:flex;flex-direction:column;gap:10px}
 .trig p.tt{color:var(--chalk);font-weight:600}
 .trigopt{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.35}
 .trigopt input{width:20px;height:20px;accent-color:var(--gold);margin:1px 0 0;flex:none}
+
+/* what to throw */
+.tackle{display:flex;flex-direction:column;gap:10px}
+.spchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.spchips button{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--chalk);border-radius:999px;padding:7px 13px;font-family:var(--f-label);font-weight:800;letter-spacing:.04em;text-transform:uppercase;font-size:14px}
+.spchips button[aria-checked="true"]{background:var(--gold);border-color:var(--gold);color:#0b1a3a}
+.wtemp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wtemp > div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.wtemp b{font-family:var(--f-board, var(--f-label));font-weight:900;font-size:30px;line-height:1;color:var(--chalk)}
+.wtemp b.phase{font-size:24px;color:var(--gold);text-transform:uppercase}
+.wtemp small{color:var(--muted);font-size:13px}
+.phasetxt{margin:0;font-size:15px;line-height:1.45}
+.mud{background:rgba(160,110,60,.18);border-left:4px solid #b07a45;border-radius:4px;padding:10px 12px}
+.mud.stain{background:rgba(160,110,60,.1)}
+.mud b{font-family:var(--f-label);font-weight:800;font-size:17px;text-transform:uppercase;letter-spacing:.03em}
+.mud p{margin:3px 0 0;font-size:14.5px;line-height:1.4}
+.baits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.baits li{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.baits .bn{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#0b1a3a;display:grid;place-items:center;font-weight:800}
+.baits b{font-family:var(--f-label);font-weight:800;font-size:18px;letter-spacing:.02em;text-transform:uppercase;line-height:1.1}
+.baits p{margin:2px 0 0;font-size:14px;color:var(--muted);line-height:1.35}
+.baits a{color:var(--gold);font-weight:700;font-size:14px;white-space:nowrap;text-decoration:none}
+.note.fine{font-size:12.5px}

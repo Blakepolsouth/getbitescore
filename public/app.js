@@ -1,4 +1,5 @@
 /* Bite Score app — UI layer. Scoring lives in engine.js. */
+import { SPECIES, historyURL, waterModel, waterOn, season, baits, colorTip, shopURL } from "./tackle.js";
 import { triggers,
   buildModel, bestWindow, snapWindow, primeFor, tierOf, grade, gradeTier, reason, phaseName,
   fetchForecast, fetchStationList, nearestStation, fetchTides, inTideRegion, spotURL, SITE,
@@ -39,7 +40,7 @@ function render() {
   if (s.storms) { al.hidden = false; al.textContent = "⚡ Storms forecast during fishing hours. Stay off the water when you hear thunder."; }
   else if (s.gust > 30) { al.hidden = false; al.textContent = `💨 Gusts up to ${Math.round(s.gust)} mph. Small boats use caution.`; }
   else al.hidden = true;
-  renderWeek(); renderChart(D, w); renderTimes(D, w); renderStats(D); renderTicker(D, w); renderAlerts(); renderEmbed();
+  renderTackle(); renderWeek(); renderChart(D, w); renderTimes(D, w); renderStats(D); renderTicker(D, w); renderAlerts(); renderEmbed();
   $("starBtn").setAttribute("aria-pressed", isSaved() ? "true" : "false");
   $("live").classList.toggle("sample", DEMO); $("liveTxt").textContent = DEMO ? "SAMPLE" : "LIVE";
   $("tideLegend").hidden = !MODEL.hasTides;
@@ -177,7 +178,39 @@ async function load(p, opt) {
   const want = PENDING_DAY || keepKey; PENDING_DAY = null;
   const i = want ? MODEL.days.findIndex(d => d.key === want) : -1; SEL = i >= 0 ? i : 0;
   render(); updateURL();
+  loadHistory(p);
 }
+/* tackle box: water temp, clarity and what to throw */
+let HIST = null;
+async function loadHistory(p) {
+  const key = `hist_${(+p.lat).toFixed(2)}_${(+p.lon).toFixed(2)}`, c = store.get(key, null);
+  if (c && Date.now() - c.at < 3 * 3600e3) { HIST = { key, daily: c.daily }; return renderTackle(); }
+  try { const r = await fetch(historyURL(p)); if (!r.ok) throw 0; const j = await r.json(); HIST = { key, daily: j.daily }; store.set(key, { at: Date.now(), daily: j.daily }); }
+  catch (e) { HIST = c ? { key, daily: c.daily } : null; }
+  renderTackle();
+}
+function renderTackle() {
+  const box = $("tackle"); if (!MODEL || !HIST || !HIST.daily) { box.hidden = true; return; }
+  const D = MODEL.days[SEL], s = D.summary, salt = !!MODEL.hasTides;
+  let sp = store.get("species", "bass"); if (!SPECIES[sp] || (SPECIES[sp].salt && !salt)) sp = "bass";
+  const list = Object.entries(SPECIES).filter(([, v]) => salt || !v.salt);
+  $("spChips").innerHTML = list.map(([k, v]) => `<button type="button" role="radio" aria-checked="${k === sp}" data-sp="${k}">${v.name}</button>`).join("");
+  const W = waterOn(waterModel(HIST.daily, SPECIES[sp].salt), D.key); if (!W) { box.hidden = true; return; }
+  const month = +D.key.slice(5, 7), se = season(sp, W.temp, W.trend, month), low = s.cloud >= 65;
+  const picks = baits(sp, { wt: W.temp, phase: se.name, clar: W.clar, light: low ? "low" : "bright", wind: s.wind, pFall: s.pTrend <= -2, pRise: s.pTrend >= 2 });
+  const trendTxt = W.trend > 1.5 ? "and warming" : W.trend < -1.5 ? "and cooling" : "and steady";
+  const mud = W.clar === "muddy" ? `<div class="mud"><b>🟤 Muddy water likely</b><p>${W.rain3 >= 1 ? `${W.rain3.toFixed(1)}″ of rain in the last few days` : `${W.rain7.toFixed(1)}″ of rain this week`} will cloud the water${SPECIES[sp].salt ? " and freshen the bays. Fish closer to the passes and cleaner water" : sp === "catfish" ? ". Good news for catfish: fish the runoff" : ". Fish shallower and slower, with dark, loud baits"}.</p></div>`
+    : W.clar === "stained" ? `<div class="mud stain"><b>🟫 Water may be stained</b><p>Recent rain (${W.rain7.toFixed(1)}″ this week) likely took the clarity down. Go a little brighter and louder.</p></div>` : "";
+  $("tackleDay").textContent = D.isToday ? "Today" : DL[keyDate(D.key).getUTCDay()];
+  $("tackleBody").innerHTML = `
+    <div class="wtemp"><div><span class="lbl">Water temp (est.)</span><b>≈${W.temp}°</b><small>${trendTxt}</small></div><div><span class="lbl">${esc(SPECIES[sp].name)} pattern</span><b class="phase">${esc(se.name)}</b></div></div>
+    <p class="phasetxt">${esc(se.text)}</p>${mud}
+    <ol class="baits">${picks.map((b, i) => `<li><span class="bn">${i + 1}</span><div><b>${esc(b.name)}</b><p>${esc(b.why)}</p></div><a href="${shopURL(b.q)}" target="_blank" rel="noopener sponsored">Find it ›</a></li>`).join("")}</ol>
+    <p class="note">${esc(colorTip(sp, W.clar, low))}</p>
+    <p class="note fine">Water temp is estimated from recent air temps. Shallow coves run warmer, deep water and springs cooler.</p>`;
+  box.hidden = false;
+}
+$("spChips").onclick = e => { const b = e.target.closest("[data-sp]"); if (!b) return; store.set("species", b.dataset.sp); renderTackle(); };
 function showError() {
   MODEL = null; const b = $("bug"); b.classList.remove("loading"); b.style.setProperty("--tier", "var(--muted)");
   $("score").innerHTML = "–<sup>/10</sup>"; $("verdict").innerHTML = "<span>No signal</span>"; $("prime").textContent = "–"; $("primeNote").textContent = "";
