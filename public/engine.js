@@ -150,6 +150,11 @@ export function buildModel(h, tz, place, tides, now) {
       pNoon: (hrs.find(x => x.hr === 12) || hrs[0]).p,
       pTrend: (hrs.find(x => x.hr === 18) || hrs[hrs.length - 1]).p - (hrs.find(x => x.hr === 6) || hrs[0]).p,
       tmax, tmin: Math.min(...hrs.map(x => x.tmp)), tdiff: pm == null ? 0 : tmax - pm,
+      ...(() => { // the last two days of pressure, and when rain starts (for bite triggers)
+        const ki = keys.indexOf(k), back = H.filter(x => x.ms <= (hrs.find(y => y.hr === 12) || hrs[0]).ms && x.ms >= (hrs.find(y => y.hr === 12) || hrs[0]).ms - 48 * 3600e3 && x.p != null).map(x => x.p);
+        const wet = fish.filter(x => x.pr >= .02);
+        return { pRange48: ki >= 1 && back.length > 30 ? Math.max(...back) - Math.min(...back) : null, pDropMax: fish.length ? Math.min(...fish.map(x => x.dp3)) : 0, rainStart: wet.length ? wet[0].ms : null };
+      })(),
       phase: mp.phase, illum: mp.fraction, ps, ts, storms: storms.length, tides: dayTides
     };
     return { key: k, start, hrs, fish, ev, win, score, summary, isToday: k === todayKey };
@@ -181,6 +186,26 @@ export function primeFor(D, now) {
     if (nx.start && nx.end > now) { passed = w; w = snapWindow(nx, D.ev); } else { passed = w; w = { start: null, end: null }; }
   }
   return { w, passed };
+}
+
+/* Bite triggers: the weather patterns that turn fish on (or off), in plain English.
+   Returns [{ id, icon, title, why, tip, power }] strongest first. power 3 = big, 2 = solid, -1 = works against you. */
+export function triggers(s, fmt = ms => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric" })) {
+  const out = [], T = (id, icon, title, why, tip, power) => out.push({ id, icon, title, why, tip, power });
+  const dir = d => ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"][Math.round((((d % 360) + 360) % 360) / 45) % 8];
+  const front = !s.storms && (s.pTrend <= -2 || s.pDropMax <= -2);
+  if (front) T("drop", "📉", "Pressure falling ahead of a front", "Fish often feed hard in the hours before a front. It can be the best bite of the week.", (s.rainStart ? `Rain looks to start around ${fmt(s.rainStart)}, so get out before it. ` : "") + "Cover water with moving baits.", s.pTrend <= -4 ? 3 : 2);
+  if (!s.storms && s.rainIn >= .05 && s.rainIn <= .5) T("drizzle", "🌦️", "Light rain", "A light rain breaks up the surface, dims the light and washes food into the water.", "Fish creek mouths, runoff and shallow cover.", 2);
+  if (!s.storms && s.cloud >= 70) T("clouds", "☁️", "Cloudy all day", "No glare means fish roam shallower and stay active longer.", "Good day for topwater and shallow cover, not just at dawn.", 2);
+  if (s.wind >= 7 && s.wind <= 15 && s.wdir != null) T("breeze", "🌬️", `Steady ${Math.round(s.wind)} mph breeze`, "Wind pushes bait onto banks and points, and fish follow it.", `Fish the ${dir(s.wdir + 180)}-facing banks and points the wind is blowing into.`, 2);
+  if (!front && s.pRange48 != null && s.pRange48 < 3 && Math.abs(s.pTrend) < 1) T("stable", "⚖️", "Steady weather", "A few days of stable weather settle fish into patterns you can count on.", "Go back to what worked last time.", 2);
+  if (s.ps > .85) T("moon", Math.abs(s.phase - .5) < .25 ? "🌕" : "🌑", Math.abs(s.phase - .5) < .25 ? "Full moon week" : "New moon week", "New and full moons bring stronger feeding periods" + (s.t != null ? " and bigger tides." : "."), "Plan around the major feeding times below.", 2);
+  if (s.t != null && s.t >= .7) T("tide", "🌊", "Strong moving tide", "Moving water pushes bait around and turns fish on.", "Fish the hours around the tide changes.", 2);
+  if (s.pTrend >= 2.5 && s.cloud <= 30) T("bluebird", "🔵", "Bluebird skies behind a front", "Rising pressure and bright sun after a front make fish sluggish and tight to cover.", "Slow down: smaller baits, deeper water, tight to cover.", -1);
+  if (s.tdiff <= -12) T("chill", "🥶", `${Math.abs(Math.round(s.tdiff))}° colder than yesterday`, "A sudden cold snap shocks fish, especially in shallow water.", "Fish a little deeper and slow your retrieve.", -1);
+  if (s.tmax >= 90) T("heat", "🥵", `Hot: ${Math.round(s.tmax)}°`, "Fish go deep in the heat and feed mostly early and late.", "Fish first and last light, or go deep midday.", -1);
+  if (s.wind > 18) T("wind", "💨", `Windy: ${Math.round(s.wind)} mph`, "Rough water makes boat control hard and muddies the shallows.", "Fish protected coves and the calm side of points.", -1);
+  return out.sort((a, b) => b.power - a.power);
 }
 
 /* Plain-English reason */

@@ -1,5 +1,5 @@
 /* Bite Score app — UI layer. Scoring lives in engine.js. */
-import {
+import { triggers,
   buildModel, bestWindow, snapWindow, primeFor, tierOf, grade, gradeTier, reason, phaseName,
   fetchForecast, fetchStationList, nearestStation, fetchTides, inTideRegion, spotURL, SITE,
   fmtT as fT, fmtRange as fR, parts, DN, DL, MN, keyDate, compass, inHg, clamp, avg
@@ -32,6 +32,9 @@ function render() {
   $("prime").textContent = w.start ? fmtRange(w.start, w.end) : "–";
   $("primeNote").textContent = passed ? (w.start ? `Earlier window ${fmtRange(passed.start, passed.end)} has passed.` : "Today's best window has passed. Check tomorrow.") : primeWhy(w, D);
   $("why").textContent = reason(s);
+  const tg = triggers(s, fmtT);
+  $("trigs").hidden = !tg.length;
+  $("trigs").innerHTML = tg.length ? `<div class="lbl">Why fish will bite${D.isToday ? " today" : ""}</div>` + tg.map(x => `<div class="trig${x.power < 0 ? " neg" : x.power >= 3 ? " big" : ""}"><span class="ti" aria-hidden="true">${x.icon}</span><div><b>${esc(x.title)}</b><p>${esc(x.why)}</p><p class="tt">${x.power < 0 ? "Plan around it: " : "Play it: "}${esc(x.tip)}</p></div></div>`).join("") : "";
   const al = $("alert");
   if (s.storms) { al.hidden = false; al.textContent = "⚡ Storms forecast during fishing hours. Stay off the water when you hear thunder."; }
   else if (s.gust > 30) { al.hidden = false; al.textContent = `💨 Gusts up to ${Math.round(s.gust)} mph. Small boats use caution.`; }
@@ -392,7 +395,7 @@ function renderAlerts() {
   $("alertSpot").textContent = PLACE.name;
   const list = alertsLocal(), mine = list.find(a => a.key === spotKey(PLACE));
   $("alertBtn").textContent = mine ? `✓ Alerts on at ${mine.threshold}+ · Update` : "🔔 Turn on alerts";
-  if (mine) { $("alertThr").value = String(mine.threshold); $("alertLead").value = String(mine.lead || 3); }
+  if (mine) { $("alertThr").value = String(mine.threshold); $("alertLead").value = String(mine.lead || 3); $("alertTrig").checked = mine.triggers !== false; }
   $("alertList").innerHTML = "";
   list.forEach(a => {
     const row = document.createElement("div"); row.innerHTML = `<span>🔔 ${esc(a.name)} · ${a.threshold}+ · ${(a.lead || 3) === 1 ? "day before" : (a.lead || 3) + " days notice"}</span>`;
@@ -420,10 +423,10 @@ $("alertBtn").onclick = async () => {
   try {
     const perm = await Notification.requestPermission();
     if (perm !== "granted") { alertNote("Notifications are blocked for this site. Allow them in your browser or phone settings, then try again."); return; }
-    const sub = await pushSub(), threshold = +$("alertThr").value, lead = +$("alertLead").value;
-    const r = await fetch("/api/alerts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "subscribe", subscription: sub.toJSON(), spot: { name: PLACE.name, label: PLACE.label, lat: PLACE.lat, lon: PLACE.lon }, threshold, lead }) });
+    const sub = await pushSub(), threshold = +$("alertThr").value, lead = +$("alertLead").value, trig = $("alertTrig").checked;
+    const r = await fetch("/api/alerts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "subscribe", subscription: sub.toJSON(), spot: { name: PLACE.name, label: PLACE.label, lat: PLACE.lat, lon: PLACE.lon }, threshold, lead, triggers: trig }) });
     if (!r.ok) throw new Error("subscribe " + r.status);
-    const list = alertsLocal().filter(a => a.key !== spotKey(PLACE)); list.unshift({ key: spotKey(PLACE), name: PLACE.name, lat: PLACE.lat, lon: PLACE.lon, threshold, lead });
+    const list = alertsLocal().filter(a => a.key !== spotKey(PLACE)); list.unshift({ key: spotKey(PLACE), name: PLACE.name, lat: PLACE.lat, lon: PLACE.lon, threshold, lead, triggers: trig });
     store.set("alerts", list.slice(0, 10)); toast(`Alerts on for ${PLACE.name}`);
   } catch (e) { alertNote("Couldn't turn on alerts right now. Please try again in a minute."); }
   finally { btn.disabled = false; renderAlerts(); }

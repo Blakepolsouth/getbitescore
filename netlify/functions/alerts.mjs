@@ -36,10 +36,11 @@ export default async (req) => {
   const record = {
     subscription: { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
     spot: { name, label: clean(spot.label, 80) || name, lat: +(+spot.lat).toFixed(4), lon: +(+spot.lon).toFixed(4) },
-    threshold, lead, created: Date.now(), notified: {}
+    threshold, lead, triggers: body.triggers !== false, created: Date.now(), notified: {}
   };
   const existing = await store.get(id, { type: "json" });
   if (existing && existing.notified) record.notified = existing.notified;
+  if (existing && existing.trig) record.trig = existing.trig;
   await store.setJSON(id, record);
 
   // Confirmation notification, which also proves the phone can receive alerts.

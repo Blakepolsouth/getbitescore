@@ -195,3 +195,15 @@ details.more > div{margin-top:10px;display:flex;flex-direction:column;gap:10px}
 .shbtn:hover{border-color:var(--gold)}
 .sharecopy{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .btn[aria-busy="true"]{opacity:.7}
+
+/* bite triggers */
+.trigs{position:relative;z-index:1;padding:0 16px 16px;display:flex;flex-direction:column;gap:8px}
+.trig{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:start;background:var(--panel-2);border-left:4px solid var(--good);border-radius:4px;padding:10px 12px}
+.trig.big{border-left-color:var(--gold);background:rgba(255,184,28,.1)}
+.trig.neg{border-left-color:#ff8a3d}
+.trig .ti{font-size:24px;line-height:1.1}
+.trig b{font-family:var(--f-label);font-weight:800;font-size:18px;letter-spacing:.02em;text-transform:uppercase;line-height:1.1}
+.trig p{margin:3px 0 0;font-size:14.5px;line-height:1.4;color:var(--muted)}
+.trig p.tt{color:var(--chalk);font-weight:600}
+.trigopt{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.35}
+.trigopt input{width:20px;height:20px;accent-color:var(--gold);margin:1px 0 0;flex:none}
