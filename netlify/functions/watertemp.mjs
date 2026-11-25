@@ -33,7 +33,7 @@ async function usgs(lat, lon) {
   await Promise.all(c.map(async x => { try { const m = await getJSON(`${base}/monitoring-locations/items/${encodeURIComponent(x.id)}?f=json`, h, 5000); x.name = pretty(m.properties?.monitoring_location_name); x.type = /lake|reservoir|impoundment/i.test(m.properties?.site_type || "") ? "lake" : "stream"; } catch { x.type = "stream"; } }));
   // Skip gauges right below a dam (cold water released from the bottom of the lake) and far-off river gauges.
   // A lake gauge is a better match for lake fishing than a river gauge a little closer.
-  const ok = c.filter(x => !(x.type === "stream" && (/\bdam\b/i.test(x.name || "") || x.miles > 10)));
+  const ok = c.filter(x => !(x.type === "stream" && (/\bdam\b/i.test(x.name || "") || x.miles > 3)));
   ok.forEach(x => x.rank = x.miles * (x.type === "lake" ? .6 : 1));
   const best = ok.sort((a, b) => a.rank - b.rank)[0]; if (!best) return null;
   return { temp: Math.round(best.temp), time: best.time, miles: Math.round(best.miles * 10) / 10, name: best.name || "USGS gauge", type: best.type, source: "USGS" };
@@ -56,7 +56,7 @@ async function noaa(lat, lon, store) {
 export default async (req) => {
   const u = new URL(req.url), lat = +u.searchParams.get("lat"), lon = +u.searchParams.get("lon");
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return json({ error: "lat and lon required" }, 400);
-  const store = getStore({ name: "watertemp" }), key = `v2:${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const store = getStore({ name: "watertemp" }), key = `v3:${lat.toFixed(2)},${lon.toFixed(2)}`;
   try { const c = await store.get(key, { type: "json" }); if (c && Date.now() - c.at < 3600e3) return json(c.r); } catch {}
   const [a, b] = await Promise.all([usgs(lat, lon).catch(() => null), noaa(lat, lon, store).catch(() => null)]);
   const pick = [a, b].filter(Boolean).sort((x, y) => x.miles * (x.type === "stream" ? 1 : .6) - y.miles * (y.type === "stream" ? 1 : .6))[0];
